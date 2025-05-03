@@ -4,11 +4,11 @@ from telebot import types
 import requests
 import os
 
-API_TOKEN = 'YOUR_TELEGRAM_BOT_TOKEN'
+BOT_TOKEN = 'YOUR_TELEGRAM_BOT_TOKEN'
 ADMIN_ID = 7423694517  # Replace with your Telegram user ID
 BACKEND_URL = 'https://tg-ghibli-bot.onrender.com/generate_image'
 
-bot = telebot.TeleBot(API_TOKEN)
+bot = telebot.TeleBot(BOT_TOKEN)
 user_db = set()
 
 @bot.message_handler(commands=['start'])
