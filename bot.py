@@ -1,68 +1,50 @@
 import telebot
-from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 import requests
-import os
+from telebot import types
 
-# Fetch the bot token from environment variables
-BOT_TOKEN = os.getenv("BOT_TOKEN")
-if not BOT_TOKEN:
-    raise ValueError("Please set the BOT_TOKEN environment variable.")
+API_TOKEN = 'YOUR_BOT_TOKEN'
+BACKEND_URL = 'https://your-backend-url.onrender.com/generate_image'
 
-bot = telebot.TeleBot(BOT_TOKEN)
+bot = telebot.TeleBot(API_TOKEN)
 
-# Function to generate Ghibli or Anime images using an API
-def generate_image(choice):
-    # Placeholder API endpoint (replace with a real image generation API)
-    api_url = "https://api.example.com/generate_image"
-    payload = {"style": choice}  # "Ghibli" or "Anime"
-    
-    response = requests.post(api_url, json=payload)
-    if response.status_code == 200:
-        return response.content  # Return raw image data
-    else:
-        raise Exception("Failed to generate image")
+@bot.message_handler(commands=['start'])
+def start_handler(message):
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    btn1 = types.KeyboardButton("Ghibli")
+    btn2 = types.KeyboardButton("Anime")
+    markup.add(btn1, btn2)
+    bot.send_message(
+        message.chat.id,
+        "Welcome to the Ghibli & Anime Image Bot! What type of image would you like to generate?",
+        reply_markup=markup
+    )
 
-# Main menu with Ghibli and Anime options
-def main_menu(chat_id):
-    markup = InlineKeyboardMarkup()
-    markup.add(InlineKeyboardButton("Ghibli", callback_data="Ghibli"))
-    markup.add(InlineKeyboardButton("Anime", callback_data="Anime"))
-    bot.send_message(chat_id, "What type of image would you like to generate?", reply_markup=markup)
+@bot.message_handler(content_types=['photo'])
+def photo_handler(message):
+    file_info = bot.get_file(message.photo[-1].file_id)
+    file = requests.get(f"https://api.telegram.org/file/bot{API_TOKEN}/{file_info.file_path}")
+    with open("input.jpg", "wb") as f:
+        f.write(file.content)
 
-# Welcome message and start menu
-@bot.message_handler(commands=["start"])
-def send_welcome(message):
-    bot.reply_to(message, "Welcome to the Ghibli & Anime Image Bot! 🎨")
-    main_menu(message.chat.id)
+    markup = types.InlineKeyboardMarkup()
+    markup.add(types.InlineKeyboardButton("Ghibli", callback_data="ghibli"))
+    markup.add(types.InlineKeyboardButton("Anime", callback_data="anime"))
+    bot.send_message(message.chat.id, "Select style:", reply_markup=markup)
 
-# Handle Ghibli or Anime selection
-@bot.callback_query_handler(func=lambda call: call.data in ["Ghibli", "Anime"])
-def handle_choice(call):
-    choice = call.data
+@bot.callback_query_handler(func=lambda call: True)
+def callback_query(call):
+    style = call.data
+    files = {'image': open('input.jpg', 'rb')}
+    data = {'style': style}
     try:
-        bot.send_message(call.message.chat.id, f"Generating a {choice} image for you... 🎉")
-        image_data = generate_image(choice)
-        
-        # Send the generated image
-        bot.send_photo(call.message.chat.id, photo=image_data)
-        
-        # Show Back to Main Menu button
-        markup = InlineKeyboardMarkup()
-        markup.add(InlineKeyboardButton("Back to Main Menu", callback_data="main_menu"))
-        bot.send_message(call.message.chat.id, "Would you like to return to the main menu?", reply_markup=markup)
+        response = requests.post(BACKEND_URL, files=files, data=data)
+        if response.status_code == 200:
+            with open("output.jpg", "wb") as out:
+                out.write(response.content)
+            bot.send_photo(call.message.chat.id, photo=open("output.jpg", 'rb'))
+        else:
+            bot.send_message(call.message.chat.id, "Image generation failed.")
     except Exception as e:
-        bot.send_message(call.message.chat.id, f"Error: {e}. Please try again later.")
+        bot.send_message(call.message.chat.id, f"Error: {str(e)}")
 
-# Handle Back to Main Menu button
-@bot.callback_query_handler(func=lambda call: call.data == "main_menu")
-def back_to_main_menu(call):
-    main_menu(call.message.chat.id)
-
-# Fallback for unrecognized messages
-@bot.message_handler(func=lambda msg: True)
-def fallback(message):
-    bot.reply_to(message, "Please use the buttons to navigate the bot. 😊")
-
-# Keep the bot running
-print("Bot is running...!")
-bot.infinity_polling()
+bot.polling()
