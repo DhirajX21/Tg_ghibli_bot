@@ -1,13 +1,10 @@
-## main.py (Telegram Bot with Admin Features)
 import telebot
 from telebot import types
 import requests
 import os
-from telegram.ext import ApplicationBuilder, CommandHandler
-from your_handlers import start_handler, image_handler  # example
 
 BOT_TOKEN = 'YOUR_TELEGRAM_BOT_TOKEN'
-ADMIN_ID = 7423694517  # Replace with your Telegram user ID
+ADMIN_ID = 7423694517
 BACKEND_URL = 'https://tg-ghibli-bot.onrender.com/generate_image'
 
 bot = telebot.TeleBot(BOT_TOKEN)
@@ -18,12 +15,15 @@ def send_welcome(message):
     user_db.add(message.from_user.id)
     photo = open("welcome.jpg", 'rb') if os.path.exists("welcome.jpg") else None
     caption = "Welcome to Ghibli BOT. This bot helps you turn your pic into a Ghibli image. Send me your pic."
-    bot.send_photo(message.chat.id, photo, caption=caption) if photo else bot.send_message(message.chat.id, caption)
+    if photo:
+        bot.send_photo(message.chat.id, photo, caption=caption)
+    else:
+        bot.send_message(message.chat.id, caption)
 
 @bot.message_handler(content_types=['photo'])
 def ask_style(message):
     file_info = bot.get_file(message.photo[-1].file_id)
-    downloaded_file = requests.get(f"https://api.telegram.org/file/bot{API_TOKEN}/{file_info.file_path}")
+    downloaded_file = requests.get(f"https://api.telegram.org/file/bot{BOT_TOKEN}/{file_info.file_path}")
     with open("input.jpg", 'wb') as f:
         f.write(downloaded_file.content)
 
@@ -81,7 +81,7 @@ def update_welcome(message):
 def save_welcome_image(message):
     if message.content_type == 'photo':
         file_info = bot.get_file(message.photo[-1].file_id)
-        downloaded_file = requests.get(f"https://api.telegram.org/file/bot{API_TOKEN}/{file_info.file_path}")
+        downloaded_file = requests.get(f"https://api.telegram.org/file/bot{BOT_TOKEN}/{file_info.file_path}")
         with open("welcome.jpg", 'wb') as f:
             f.write(downloaded_file.content)
         bot.send_message(message.chat.id, "Welcome image updated.")
@@ -89,9 +89,3 @@ def save_welcome_image(message):
         bot.send_message(message.chat.id, "Please send a photo.")
 
 bot.polling()
-
-def run_bot():
-    application = ApplicationBuilder().token("YOUR_BOT_TOKEN").build()
-    application.add_handler(CommandHandler("start", start_handler))
-    application.add_handler(MessageHandler(filters.PHOTO, image_handler))
-    application.run_polling()
