@@ -3,6 +3,8 @@ import telebot
 from telebot import types
 import requests
 import os
+from telegram.ext import ApplicationBuilder, CommandHandler
+from your_handlers import start_handler, image_handler  # example
 
 BOT_TOKEN = 'YOUR_TELEGRAM_BOT_TOKEN'
 ADMIN_ID = 7423694517  # Replace with your Telegram user ID
@@ -87,3 +89,9 @@ def save_welcome_image(message):
         bot.send_message(message.chat.id, "Please send a photo.")
 
 bot.polling()
+
+def run_bot():
+    application = ApplicationBuilder().token("YOUR_BOT_TOKEN").build()
+    application.add_handler(CommandHandler("start", start_handler))
+    application.add_handler(MessageHandler(filters.PHOTO, image_handler))
+    application.run_polling()
