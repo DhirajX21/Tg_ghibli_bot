@@ -1,4 +1,5 @@
 flask
+pillow
 requests
-python-telegram-bot==20.8
-Pillow
+pyTelegramBotAPI
+gunicorn
